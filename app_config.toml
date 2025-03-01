@@ -1,0 +1,20 @@
+[balancer]
+policy = "RoundRobin"
+
+[server]
+listen_addr = "0.0.0.0:8080"
+server_header_read_timeout = 1000 # ms
+client_max_idle_per_host = 10
+
+[healthcheck]
+path = "/get"
+interval = 5000 # ms
+
+[[hosts]]
+host = "httpbin.org"
+weight = 1
+
+[[hosts]]
+host = "httpbin.dev"
+weight = 1
+
