@@ -1,0 +1,30 @@
+services:
+  lb:
+    image: debian:12.9-slim
+    volumes:
+      - "../target:/target"
+      - "./:/docker"
+    environment:
+      RUST_LOG: "info,load_balancer=debug"
+    command: ["/target/debug/load-balancer", "-c", "/docker/app_config.toml"]
+    ports:
+      - "8080:80"
+    depends_on:
+      backend-1:
+        condition: service_started
+      backend-2:
+        condition: service_started
+  backend-1:
+    image: nginx:1.27
+    hostname: backend-1
+    volumes:
+      - "./nginx/config.conf:/etc/nginx/conf.d/default.conf"
+    logging:
+      driver: "none"
+  backend-2:
+    image: nginx:1.27
+    hostname: backend-2
+    volumes:
+      - "./nginx/config.conf:/etc/nginx/conf.d/default.conf"
+    logging:
+      driver: "none"

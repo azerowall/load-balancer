@@ -2,19 +2,19 @@
 policy = "RoundRobin"
 
 [server]
-listen_addr = "0.0.0.0:8080"
+listen_addr = "0.0.0.0:80"
 server_header_read_timeout = 1000 # ms
 client_max_idle_per_host = 10
 
 [healthcheck]
-path = "/get"
+path = "/health"
 interval = 5000 # ms
 
 [[hosts]]
-host = "httpbin.org"
+host = "backend-1"
 weight = 1
 
 [[hosts]]
-host = "httpbin.dev"
+host = "backend-2"
 weight = 1
 

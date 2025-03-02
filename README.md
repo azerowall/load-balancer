@@ -28,10 +28,24 @@ Load-balancer written for education.
     - [ ] Metrics
     - [ ] API
 
-## How to build
+## How to build & run
+
+### With cargo
+
+`RUST_LOG=info,load_balancer=debug cargo run -- -c /path/to/config.toml`
+
+### Docker dev environment
+
+```bash
+# build binary
+cargo build
+# run dev environment
+cd docker/
+docker compose up
+# make requests
+curl http://localhost:80/echo/helloworld
+```
+
+### Release build
 
 `cargo build --release`
-
-## How to run
-
-`RUST_LOG=info,load_balancer=debug cargo run --release`
