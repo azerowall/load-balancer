@@ -1,9 +1,11 @@
 [balancer]
-policy = "RoundRobin"
+policy = "WeightedRoundRobin"
 
 [server]
 listen_addr = "0.0.0.0:80"
-server_header_read_timeout = 1000 # ms
+# We set this timemout to avoid
+# HeaderTimeout error which is caused by prometheus
+server_header_read_timeout = 6000 # ms
 client_max_idle_per_host = 10
 
 [healthcheck]
@@ -12,7 +14,7 @@ interval = 5000 # ms
 
 [[hosts]]
 host = "backend-1"
-weight = 1
+weight = 2
 
 [[hosts]]
 host = "backend-2"

@@ -1,0 +1,8 @@
+scrape_configs:
+  - job_name: load_balancer
+    scrape_interval: 5s
+    scrape_timeout: 500ms
+    scheme: http
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["lb:80"]
