@@ -7,7 +7,7 @@ use http::Request;
 use http::Response;
 use http::StatusCode;
 use http_body_util::Either;
-use http_body_util::Empty;
+use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::body::Incoming;
 use hyper::server::conn::http1;
@@ -25,6 +25,7 @@ use tracing::info;
 use tracing::warn;
 
 use crate::app_state::AppState;
+use crate::metrics;
 use crate::utils;
 
 #[derive(Clone, Deserialize)]
@@ -61,7 +62,7 @@ impl Server {
         loop {
             let (stream, addr) = listener.accept().await?;
 
-            info!("got client {addr}");
+            debug!("got client {addr}");
 
             let server = self.clone();
             let state = state.clone();
@@ -70,12 +71,14 @@ impl Server {
                     |req| {
                         let proxy = server.clone();
                         let state = state.clone();
-                        proxy.proxy_response(state, req)
+                        proxy.serve_request(state, req)
                     }
                 });
 
                 let io = TokioIo::new(stream);
 
+                // TODO: By some reason prometheus causes HeaderTimeout error
+                // even if it works fine and scrapes metrics.
                 let mut http = http1::Builder::new();
                 http.timer(TokioTimer::new())
                     .header_read_timeout(Some(server.0.config.server_header_read_timeout));
@@ -85,6 +88,32 @@ impl Server {
                 }
             });
         }
+    }
+
+    async fn serve_request(
+        self,
+        state: Arc<AppState>,
+        req: Request<hyper::body::Incoming>,
+    ) -> crate::Result<Response<ServerBody>> {
+        info!("got request {req:#?}");
+
+        match req.uri().path() {
+            // NOTE: it's better to have /metrics endpoint and service API
+            // on different port, but for now I'm ok with it.
+            "/metrics" => self.handle_metrics().await,
+            _ => self.proxy_response(state, req).await,
+        }
+    }
+
+    async fn handle_metrics(self) -> crate::Result<Response<ServerBody>> {
+        let data = metrics::gather()?;
+        let resp = Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "text/plain")
+            .body(ServerBody::Right(Full::new(Bytes::from(data))))?;
+
+        info!("return metrics {resp:#?}");
+        Ok(resp)
     }
 
     async fn proxy_response(
@@ -100,8 +129,6 @@ impl Server {
                 return Self::bad_gateway();
             }
         };
-
-        host.connections.fetch_add(1, atomic::Ordering::SeqCst);
         let address = &host.config.host;
 
         info!(
@@ -110,22 +137,22 @@ impl Server {
             address
         );
 
-        // add schema and host to uri - it's required by client
-        let mut uri_parts = req.uri().clone().into_parts();
-        uri_parts.scheme = Some(http::uri::Scheme::HTTP);
-        uri_parts.authority = Some(http::uri::Authority::from_str(address)?);
-        *req.uri_mut() = http::uri::Uri::from_parts(uri_parts)?;
+        Self::prepare_request(&mut req, address)?;
+
+        host.connections.fetch_add(1, atomic::Ordering::SeqCst);
 
         let response = self.0.client.request(req).await;
         let response = match response {
             Err(e) => {
                 warn!("upstream {address} error: {e}");
+                metrics::UPSTREAM_ERRORS.with_label_values(&[address]).inc();
                 return Self::bad_gateway();
             }
             Ok(response) => response.map(ServerBody::Left),
         };
 
         debug!("upstream {} response {}", address, response.status());
+        metrics::UPSTREAM_RPS.with_label_values(&[address]).inc();
 
         // NOTE: we return `body::Incoming`, which means at this point
         // we haven't finished this response.
@@ -136,10 +163,23 @@ impl Server {
         Ok(response)
     }
 
+    fn prepare_request(
+        req: &mut Request<hyper::body::Incoming>,
+        address: &str,
+    ) -> crate::Result<()> {
+        // add schema and host to uri for hyper client
+        let mut uri_parts = req.uri().clone().into_parts();
+        uri_parts.scheme = Some(http::uri::Scheme::HTTP);
+        uri_parts.authority = Some(http::uri::Authority::from_str(address)?);
+        *req.uri_mut() = http::uri::Uri::from_parts(uri_parts)?;
+
+        Ok(())
+    }
+
     fn bad_gateway() -> crate::Result<Response<ServerBody>> {
         let resp = Response::builder()
             .status(StatusCode::BAD_GATEWAY)
-            .body(ServerBody::Right(Empty::new()))?;
+            .body(ServerBody::Right(Full::default()))?;
 
         Ok(resp)
     }
@@ -155,4 +195,4 @@ impl Clone for Server {
 // `body::Incoming` or `http_body_util::Empty`.
 // We might have done it using BoxBody, but it will lead
 // to allocation per request.
-type ServerBody = Either<Incoming, Empty<Bytes>>;
+type ServerBody = Either<Incoming, Full<Bytes>>;
