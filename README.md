@@ -25,17 +25,22 @@ Load-balancer written for education.
 - Other
     - [x] Config
     - [ ] Config reload
-    - [ ] Metrics
+    - [x] Metrics (Prometheus + Grafana)
     - [ ] API
 
 ## How to build & run
 
-### With cargo
+### Run with cargo
 
 `RUST_LOG=info,load_balancer=debug cargo run -- -c /path/to/config.toml`
 
+### Release build
+
+`cargo build --release`
+
 ### Docker dev environment
 
+Build and run:
 ```bash
 # build binary
 cargo build
@@ -46,6 +51,6 @@ docker compose up
 curl http://localhost:80/echo/helloworld
 ```
 
-### Release build
+Prometheus web UI available on http://localhost:9090.
 
-`cargo build --release`
+Grafana web UI with dashboard available on http://localhost:3000 (admin:admin).
