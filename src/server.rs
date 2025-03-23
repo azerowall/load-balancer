@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::sync::atomic;
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::Instant;
 
 use http::Request;
 use http::Response;
@@ -140,6 +141,7 @@ impl Server {
         Self::prepare_request(&mut req, address)?;
 
         host.connections.fetch_add(1, atomic::Ordering::SeqCst);
+        let start_ts = Instant::now();
 
         let response = self.0.client.request(req).await;
         let response = match response {
@@ -151,14 +153,23 @@ impl Server {
             Ok(response) => response.map(ServerBody::Left),
         };
 
-        debug!("upstream {} response {}", address, response.status());
-        metrics::UPSTREAM_RPS.with_label_values(&[address]).inc();
+        let elapsed = start_ts.elapsed();
+        debug!(
+            "upstream {} response {}, elapsed {}",
+            address,
+            response.status(),
+            elapsed.as_millis()
+        );
 
         // NOTE: we return `body::Incoming`, which means at this point
         // we haven't finished this response.
         // Thus this metric doesn't show the real state of the things at the moment.
         // Instead we should update metrics at the end of the stream.
         host.connections.fetch_sub(1, atomic::Ordering::SeqCst);
+        metrics::UPSTREAM_TIMINGS
+            .with_label_values(&[address])
+            .observe(elapsed.as_millis() as f64);
+        metrics::UPSTREAM_RPS.with_label_values(&[address]).inc();
 
         Ok(response)
     }
