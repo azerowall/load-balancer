@@ -7,6 +7,7 @@ use crate::{balancer::HostState, policies::RoundRobin, policy::BalancerPolicy};
 use super::{LeastConnections, WeightedRoundRobin, WeightedRoundRobin2};
 
 #[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum PolicyType {
     RoundRobin,
     WeightedRoundRobin,

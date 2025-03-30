@@ -1,12 +1,18 @@
-[balancer]
-policy = "WeightedRoundRobin"
-
 [server]
 listen_addr = "0.0.0.0:80"
 # We set this timemout to avoid
 # HeaderTimeout error which is caused by prometheus
 server_header_read_timeout = 6000 # ms
 client_max_idle_per_host = 10
+set_header_x_forwarded_for = "append"
+set_header_x_forwarded_host = "overwrite"
+set_header_x_forwarded_port = "overwrite"
+set_header_x_forwarded_proto = "overwrite"
+set_header_forwarded = "append"
+client_ip_header = "X-Real-IP"
+
+[balancer]
+policy = "weighted_round_robin"
 
 [healthcheck]
 path = "/health"

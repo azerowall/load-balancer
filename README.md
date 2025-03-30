@@ -20,7 +20,7 @@ Load-balancer written for education.
 - Proxy server
     - [x] Connection pool for upstream
     - [ ] Ban host in case of big amount of errors in an interval
-    - [ ] Set `X-Real-Ip` / `X-Forwarded-For`
+    - [x] Support for headers `X-Forwarded-For`, `X-Forwarded-Port`, `X-Forwarded-Proto`, `X-Forwarded-Host`, `Forwarded`, `X-Real-Ip`
     - [ ] HTTPS for upstream
 - Other
     - [x] Config
