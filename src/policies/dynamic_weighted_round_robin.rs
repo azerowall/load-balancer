@@ -24,11 +24,6 @@ pub struct DynamicWeightedRoundRobin {
 
 impl DynamicWeightedRoundRobin {
     pub fn new() -> Self {
-        // let weights_update_interval = Duration::from_secs(5);
-        // let last_weights_update_time = Instant::now().checked_sub(weights_update_interval * 2).expect("now sub ok");
-        // Instant::from(std::time::UNIX_EPOCH);
-        // SystemTime::
-
         Self {
             hosts: Vec::new(),
             weights_update_interval: Duration::from_secs(5),
@@ -50,7 +45,7 @@ impl DynamicWeightedRoundRobin {
 
     pub fn update_weights(&self) {
         for host in &self.hosts {
-            let latency_ms = host.host.latency.get_current();
+            let latency_ms = host.host.latency_ms.get_current();
             let weight = calculate_weight(host.host.config.weight, latency_ms);
             host.weight.store(weight, atomic::Ordering::SeqCst);
         }
@@ -163,7 +158,7 @@ mod tests {
                     weight: 1,
                 },
                 alive: AtomicBool::new(true),
-                latency: Avg::new(1),
+                latency_ms: Avg::new(1),
                 connections: AtomicUsize::new(0),
             }),
             Arc::new(HostState {
@@ -172,7 +167,7 @@ mod tests {
                     weight: 1,
                 },
                 alive: AtomicBool::new(true),
-                latency: Avg::new(1),
+                latency_ms: Avg::new(1),
                 connections: AtomicUsize::new(0),
             }),
         ];
@@ -185,7 +180,7 @@ mod tests {
         assert_eq!(policy.next().unwrap().config.host, "a");
         assert_eq!(policy.next().unwrap().config.host, "b");
 
-        hosts[0].latency.account(3);
+        hosts[0].latency_ms.account(3);
         policy.update_weights();
 
         assert_eq!(policy.next().unwrap().config.host, "b");

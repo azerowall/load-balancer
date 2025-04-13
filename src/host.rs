@@ -17,7 +17,7 @@ pub struct HostState {
     // Host metrics:
     // for dynamic_weighted_round_robin
     // TODO: calculate moving average
-    pub latency: utils::statistics::Avg,
+    pub latency_ms: utils::statistics::Avg,
     // for least_connections
     pub connections: AtomicUsize,
 }
@@ -27,7 +27,7 @@ impl HostState {
         Self {
             config,
             alive: AtomicBool::new(true),
-            latency: utils::statistics::Avg::default(),
+            latency_ms: utils::statistics::Avg::default(),
             connections: AtomicUsize::new(0),
         }
     }

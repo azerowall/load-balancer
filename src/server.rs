@@ -211,7 +211,7 @@ impl Server {
         // Thus this metric doesn't show the real state of the things at the moment.
         // Instead we should update metrics at the end of the stream.
         host.connections.fetch_sub(1, atomic::Ordering::SeqCst);
-        host.latency.account(elapsed.as_micros() as usize);
+        host.latency_ms.account(elapsed.as_millis() as usize);
         metrics::UPSTREAM_TIMINGS
             .with_label_values(&[address])
             .observe(elapsed.as_millis() as f64);
