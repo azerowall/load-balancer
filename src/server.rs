@@ -65,7 +65,9 @@ pub enum ForwardedHeaderMethod {
 #[derive(Clone, Deserialize)]
 pub struct Config {
     pub listen_addr: String,
-    pub client_max_idle_per_host: usize,
+    #[serde(with = "utils::serde_millis")]
+    pub upstream_timeout: Duration,
+    pub upstream_max_idle_per_host: usize,
     #[serde(with = "utils::serde_millis")]
     pub server_header_read_timeout: Duration,
     #[serde(default)]
@@ -97,7 +99,7 @@ struct ServerInner {
 impl Server {
     pub fn new(config: Config) -> Self {
         let client = Client::builder(TokioExecutor::new())
-            .pool_max_idle_per_host(config.client_max_idle_per_host)
+            .pool_max_idle_per_host(config.upstream_max_idle_per_host)
             .set_host(false)
             .build_http();
 
@@ -189,8 +191,22 @@ impl Server {
         Self::on_request_start(&host);
         let start_ts = Instant::now();
 
-        let response = self.0.client.request(req).await;
+        let request_fut = self.0.client.request(req);
+        let result = tokio::time::timeout(self.0.config.upstream_timeout, request_fut).await;
+        let response = match result {
+            Ok(response) => response,
+            Err(_) => {
+                warn!("upstream {address} timed out");
+                let reason = "timeout";
+                metrics::UPSTREAM_ERRORS
+                    .with_label_values(&[address, reason])
+                    .inc();
+                return Self::gateway_timeout();
+            }
+        };
+
         let response = match response {
+            Ok(response) => response.map(ServerBody::Left),
             Err(e) => {
                 warn!("upstream {address} error: {e}");
                 let reason = client_error_reason(&e);
@@ -199,7 +215,6 @@ impl Server {
                     .inc();
                 return Self::bad_gateway();
             }
-            Ok(response) => response.map(ServerBody::Left),
         };
 
         let elapsed = start_ts.elapsed();
@@ -382,6 +397,14 @@ impl Server {
     fn bad_gateway() -> crate::Result<Response<ServerBody>> {
         let resp = Response::builder()
             .status(StatusCode::BAD_GATEWAY)
+            .body(ServerBody::Right(Full::default()))?;
+
+        Ok(resp)
+    }
+
+    fn gateway_timeout() -> crate::Result<Response<ServerBody>> {
+        let resp = Response::builder()
+            .status(StatusCode::GATEWAY_TIMEOUT)
             .body(ServerBody::Right(Full::default()))?;
 
         Ok(resp)
