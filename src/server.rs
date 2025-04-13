@@ -197,9 +197,9 @@ impl Server {
             Ok(response) => response,
             Err(_) => {
                 warn!("upstream {address} timed out");
-                let reason = "timeout";
+                const TIMEOUT_REASON: &str = "timeout";
                 metrics::UPSTREAM_ERRORS
-                    .with_label_values(&[address, reason])
+                    .with_label_values(&[address, TIMEOUT_REASON])
                     .inc();
                 return Self::gateway_timeout();
             }

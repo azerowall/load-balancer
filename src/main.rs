@@ -9,7 +9,11 @@ mod result;
 mod server;
 mod utils;
 
-use std::{fs, sync::Arc};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use app_state::AppState;
 use balancer::Balancer;
@@ -23,7 +27,8 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 async fn main() -> Result<()> {
     init_logging();
 
-    let config = read_config()?;
+    let args = parse_args()?;
+    let config = read_config(&args.config_path)?;
 
     let balancer = Balancer::new(config.balancer.clone(), config.hosts.clone());
 
@@ -48,8 +53,12 @@ fn init_logging() {
         .init();
 }
 
-fn read_config() -> Result<AppConfig> {
-    let mut config_file = None;
+struct Args {
+    config_path: PathBuf,
+}
+
+fn parse_args() -> Result<Args> {
+    let mut config_path = None;
 
     // I don't see any reason for using clap for one argument only
     let mut args = std::env::args();
@@ -57,14 +66,19 @@ fn read_config() -> Result<AppConfig> {
         match &arg[..] {
             "-c" => {
                 let value = args.next().ok_or("config file expected")?;
-                config_file = Some(value);
+                config_path = Some(PathBuf::from(value));
             }
             _ => {}
         }
     }
 
-    let config_file = config_file.ok_or("config file wasn't provided")?;
-    let config = fs::read_to_string(&config_file)?;
+    let config_path = config_path.ok_or("provide config file with '-c' option")?;
+
+    Ok(Args { config_path })
+}
+
+fn read_config(config_path: &Path) -> Result<AppConfig> {
+    let config = fs::read_to_string(config_path)?;
 
     Ok(toml::from_str(&config)?)
 }
