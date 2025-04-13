@@ -76,14 +76,9 @@ impl DynamicWeightedRoundRobin {
         // Here we try to aqcuire update_flag to prevent
         // weights update from several threads.
         // (it's no necessary, just optimization)
-        let lock = self.update_flag.compare_exchange(
-            false,
-            true,
-            atomic::Ordering::SeqCst,
-            atomic::Ordering::SeqCst,
-        );
+        let lock = self.update_flag.swap(true, atomic::Ordering::SeqCst);
 
-        if let Err(_) = lock {
+        if lock == true {
             return;
         }
 
