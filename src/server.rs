@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::atomic;
 use std::sync::Arc;
@@ -13,6 +14,7 @@ use http::Response;
 use http::StatusCode;
 use http_body_util::Either;
 use http_body_util::Full;
+use hyper::body::Body;
 use hyper::body::Bytes;
 use hyper::body::Incoming;
 use hyper::server::conn::http1;
@@ -136,6 +138,8 @@ impl Server {
                 let result = http.serve_connection(io, &service).await;
                 if let Err(err) = result {
                     error!("error during handling client {client_addr}: {err:?}");
+                } else {
+                    debug!("connection closed {client_addr}");
                 }
             });
         }
@@ -206,7 +210,7 @@ impl Server {
         };
 
         let response = match response {
-            Ok(response) => response.map(ServerBody::Left),
+            Ok(response) => response,
             Err(e) => {
                 warn!("upstream {address} error: {e}");
                 let reason = client_error_reason(&e);
@@ -226,12 +230,8 @@ impl Server {
         );
 
         Self::on_headers_received(&host, elapsed);
-        // NOTE: we return `body::Incoming`, which means at this point
-        // we haven't finished this response.
-        // So, metrics collected in this function don't show the real picture
-        // at the moment.
-        Self::on_body_received(&host);
 
+        let response = response.map(|body| ServerBody::Left(TrackedIncoming::new(host, body)));
         Ok(response)
     }
 
@@ -240,7 +240,7 @@ impl Server {
     }
 
     fn on_headers_received(host: &Arc<HostState>, elapsed: Duration) {
-        // NOTE: now we measure latency as time needed for receiving headers
+        // NOTE: now we measure latency as time between request and headers receiving.
         // Later we can add ability to configure it.
         host.latency_ms.account(elapsed.as_millis() as usize);
 
@@ -253,6 +253,7 @@ impl Server {
     }
 
     fn on_body_received(host: &Arc<HostState>) {
+        debug!("host {} request finished", host.address());
         host.connections.fetch_sub(1, atomic::Ordering::SeqCst);
     }
 
@@ -417,12 +418,6 @@ impl Clone for Server {
     }
 }
 
-// We use our own body type, because we want to return either
-// `body::Incoming` or `http_body_util::Empty`.
-// We might have done it using BoxBody, but it will lead
-// to allocation per request.
-type ServerBody = Either<Incoming, Full<Bytes>>;
-
 fn write_forwarded_header_item(
     value: &mut Vec<u8>,
     client_ip: &str,
@@ -443,3 +438,59 @@ fn client_error_reason(err: &hyper_util::client::legacy::Error) -> &'static str 
     }
     return "other";
 }
+
+// TrackedIncoming
+
+// This is a wrapper over hyper::body::Incoming,
+// which tracks the end of the stream and calls
+// Server::on_body_received function.
+// It does it in Drop::drop method.
+// We could use Body::poll_frame and check when Incoming
+// returns an `Poll::Read(None)`, but it's not guaranteed
+// that stream will be polled fully by server - instead it can
+// rely on Body::is_end_stream and refuse doing polling.
+struct TrackedIncoming {
+    host: Arc<HostState>,
+    body: Incoming,
+}
+
+impl TrackedIncoming {
+    pub fn new(host: Arc<HostState>, body: Incoming) -> Self {
+        Self { host, body }
+    }
+}
+
+impl Body for TrackedIncoming {
+    type Data = <Incoming as Body>::Data;
+
+    type Error = <Incoming as Body>::Error;
+
+    fn poll_frame(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Result<hyper::body::Frame<Self::Data>, Self::Error>>> {
+        let this = self.get_mut();
+        let body = Pin::new(&mut this.body);
+        body.poll_frame(cx)
+    }
+
+    fn is_end_stream(&self) -> bool {
+        self.body.is_end_stream()
+    }
+
+    fn size_hint(&self) -> hyper::body::SizeHint {
+        self.body.size_hint()
+    }
+}
+
+impl Drop for TrackedIncoming {
+    fn drop(&mut self) {
+        Server::on_body_received(&self.host);
+    }
+}
+
+// We use our own body type, because we want to return either
+// `body::Incoming` or `http_body_util::Empty`.
+// We might have done it using BoxBody, but it will lead
+// to allocation per request.
+type ServerBody = Either<TrackedIncoming, Full<Bytes>>;
