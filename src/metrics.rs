@@ -17,7 +17,7 @@ lazy_static! {
         "upstream_timings",
         "upstream timings",
         &["host"],
-        vec![1.0, 10.0, 100.0, 200.0, 500.0, 1000.0, 2000.0],
+        vec![0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0],
     )
     .expect("Can't create metric");
 }
