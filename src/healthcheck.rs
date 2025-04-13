@@ -20,6 +20,7 @@ use crate::utils;
 
 #[derive(Clone, Deserialize)]
 pub struct Config {
+    pub enabled: bool,
     pub path: String,
     #[serde(with = "utils::serde_millis")]
     pub interval: Duration,
@@ -43,6 +44,10 @@ impl Healthcheck {
     }
 
     pub async fn run(&self) {
+        if !self.config.enabled {
+            return;
+        }
+
         loop {
             tokio::time::sleep(self.config.interval).await;
             self.do_healthcheck().await;
