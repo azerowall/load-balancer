@@ -1,9 +1,4 @@
-use std::{
-    convert::Infallible,
-    io,
-    sync::{atomic, Arc},
-    time::Duration,
-};
+use std::{convert::Infallible, io, sync::Arc, time::Duration};
 
 use http::uri;
 use http_body_util::{combinators::BoxBody, BodyExt, Empty};
@@ -60,13 +55,13 @@ impl Healthcheck {
         let hosts = self.app_state.balancer.hosts();
 
         for host in &hosts {
-            let result = self.check(&host.config.host).await;
+            let result = self.check(host.address()).await;
             if let Err(e) = result {
-                warn!("healthcheck failed for {}: {}", host.config.host, e);
-                host.alive.store(false, atomic::Ordering::SeqCst);
+                warn!("healthcheck failed for {}: {}", host.address(), e);
+                host.set_alive(false);
             } else {
-                debug!("healthcheck successful for {}", host.config.host);
-                host.alive.store(true, atomic::Ordering::SeqCst);
+                debug!("healthcheck successful for {}", host.address());
+                host.set_alive(true);
             }
         }
 

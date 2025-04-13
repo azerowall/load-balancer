@@ -175,18 +175,18 @@ mod tests {
         let mut policy = DynamicWeightedRoundRobin::new();
         policy.set_hosts(hosts.clone());
 
-        assert_eq!(policy.next().unwrap().config.host, "a");
-        assert_eq!(policy.next().unwrap().config.host, "b");
-        assert_eq!(policy.next().unwrap().config.host, "a");
-        assert_eq!(policy.next().unwrap().config.host, "b");
+        assert_eq!(policy.next().unwrap().address(), "a");
+        assert_eq!(policy.next().unwrap().address(), "b");
+        assert_eq!(policy.next().unwrap().address(), "a");
+        assert_eq!(policy.next().unwrap().address(), "b");
 
         hosts[0].latency_ms.account(3);
         policy.update_weights();
 
-        assert_eq!(policy.next().unwrap().config.host, "b");
-        assert_eq!(policy.next().unwrap().config.host, "a");
-        assert_eq!(policy.next().unwrap().config.host, "b");
-        assert_eq!(policy.next().unwrap().config.host, "b");
+        assert_eq!(policy.next().unwrap().address(), "b");
+        assert_eq!(policy.next().unwrap().address(), "a");
+        assert_eq!(policy.next().unwrap().address(), "b");
+        assert_eq!(policy.next().unwrap().address(), "b");
     }
 
     #[test]
@@ -209,7 +209,7 @@ mod tests {
         let mut policy = DynamicWeightedRoundRobin::new();
         policy.set_hosts(hosts);
         let result = (0..12)
-            .map(|_| policy.next().unwrap().config.host.clone())
+            .map(|_| policy.next().unwrap().address().to_owned())
             .collect::<Vec<_>>();
         let expected =
             ["a", "c", "a", "b", "c", "a", "a", "c", "a", "b", "c", "a"].map(ToOwned::to_owned);
@@ -226,11 +226,11 @@ mod tests {
         let mut policy = DynamicWeightedRoundRobin::new();
         policy.set_hosts(hosts);
         assert_eq!(
-            policy.next().map(|h| h.config.host.clone()),
+            policy.next().map(|h| h.address().to_owned()),
             Some("a".to_owned())
         );
         assert_eq!(
-            policy.next().map(|h| h.config.host.clone()),
+            policy.next().map(|h| h.address().to_owned()),
             Some("a".to_owned())
         );
     }

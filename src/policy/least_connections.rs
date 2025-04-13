@@ -61,13 +61,13 @@ mod tests {
         policy.set_hosts(hosts.clone());
 
         assert_eq!(
-            policy.next().map(|h| h.config.host.clone()),
+            policy.next().map(|h| h.address().to_owned()),
             Some("b".to_owned())
         );
 
         hosts[1].connections.fetch_add(2, atomic::Ordering::SeqCst);
         assert_eq!(
-            policy.next().map(|h| h.config.host.clone()),
+            policy.next().map(|h| h.address().to_owned()),
             Some("c".to_owned())
         );
     }

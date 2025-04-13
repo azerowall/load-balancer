@@ -4,7 +4,6 @@ mod config;
 mod healthcheck;
 mod host;
 mod metrics;
-mod policies;
 mod policy;
 mod result;
 mod server;

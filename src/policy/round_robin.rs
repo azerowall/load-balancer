@@ -61,7 +61,7 @@ mod tests {
         let mut policy = RoundRobin::new();
         policy.set_hosts(hosts);
         let result = (0..4)
-            .map(|_| policy.next().map(|h| h.config.host.clone()))
+            .map(|_| policy.next().map(|h| h.address().to_owned()))
             .collect::<Vec<_>>();
         assert_eq!(
             result,
@@ -84,11 +84,11 @@ mod tests {
         let mut policy = RoundRobin::new();
         policy.set_hosts(hosts);
         assert_eq!(
-            policy.next().map(|h| h.config.host.clone()),
+            policy.next().map(|h| h.address().to_owned()),
             Some("a".to_owned())
         );
         assert_eq!(
-            policy.next().map(|h| h.config.host.clone()),
+            policy.next().map(|h| h.address().to_owned()),
             Some("a".to_owned())
         );
     }

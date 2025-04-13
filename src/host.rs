@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, AtomicUsize};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use serde::Deserialize;
 
@@ -30,5 +30,17 @@ impl HostState {
             latency_ms: utils::statistics::Avg::default(),
             connections: AtomicUsize::new(0),
         }
+    }
+
+    pub fn address(&self) -> &str {
+        &self.config.host
+    }
+
+    pub fn is_alive(&self) -> bool {
+        self.alive.load(Ordering::SeqCst)
+    }
+
+    pub fn set_alive(&self, alive: bool) {
+        self.alive.store(alive, Ordering::SeqCst);
     }
 }

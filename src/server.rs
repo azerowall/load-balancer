@@ -30,6 +30,7 @@ use tracing::info;
 use tracing::warn;
 
 use crate::app_state::AppState;
+use crate::host::HostState;
 use crate::metrics;
 use crate::utils;
 
@@ -175,7 +176,7 @@ impl Server {
                 return Self::bad_gateway();
             }
         };
-        let address = &host.config.host;
+        let address = host.address();
 
         info!(
             "got request for {} - it will be proxied to {}",
@@ -185,7 +186,7 @@ impl Server {
 
         self.prepare_request(&mut req, client_addr, address)?;
 
-        host.connections.fetch_add(1, atomic::Ordering::SeqCst);
+        Self::on_request_start(&host);
         let start_ts = Instant::now();
 
         let response = self.0.client.request(req).await;
@@ -200,24 +201,41 @@ impl Server {
 
         let elapsed = start_ts.elapsed();
         debug!(
-            "upstream {} response {}, elapsed {}",
+            "upstream {} response {}, elapsed {} ms",
             address,
             response.status(),
             elapsed.as_millis()
         );
 
+        Self::on_headers_received(&host, elapsed);
         // NOTE: we return `body::Incoming`, which means at this point
         // we haven't finished this response.
-        // Thus this metric doesn't show the real state of the things at the moment.
-        // Instead we should update metrics at the end of the stream.
-        host.connections.fetch_sub(1, atomic::Ordering::SeqCst);
-        host.latency_ms.account(elapsed.as_millis() as usize);
-        metrics::UPSTREAM_TIMINGS
-            .with_label_values(&[address])
-            .observe(elapsed.as_millis() as f64);
-        metrics::UPSTREAM_RPS.with_label_values(&[address]).inc();
+        // So, metrics collected in this function don't show the real picture
+        // at the moment.
+        Self::on_body_received(&host);
 
         Ok(response)
+    }
+
+    fn on_request_start(host: &Arc<HostState>) {
+        host.connections.fetch_add(1, atomic::Ordering::SeqCst);
+    }
+
+    fn on_headers_received(host: &Arc<HostState>, elapsed: Duration) {
+        // NOTE: now we measure latency as time needed for receiving headers
+        // Later we can add ability to configure it.
+        host.latency_ms.account(elapsed.as_millis() as usize);
+
+        metrics::UPSTREAM_TIMINGS
+            .with_label_values(&[host.address()])
+            .observe(elapsed.as_millis() as f64);
+        metrics::UPSTREAM_RPS
+            .with_label_values(&[host.address()])
+            .inc();
+    }
+
+    fn on_body_received(host: &Arc<HostState>) {
+        host.connections.fetch_sub(1, atomic::Ordering::SeqCst);
     }
 
     fn prepare_request(

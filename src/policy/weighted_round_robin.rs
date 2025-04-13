@@ -93,7 +93,7 @@ mod tests {
         let mut policy = WeightedRoundRobin::new();
         policy.set_hosts(hosts);
         let result = (0..12)
-            .map(|_| policy.next().map(|h| h.config.host.clone()))
+            .map(|_| policy.next().map(|h| h.address().to_owned()))
             .collect::<Vec<_>>();
         let expected = ["a", "c", "a", "b", "c", "a", "a", "c", "a", "b", "c", "a"]
             .map(ToOwned::to_owned)
@@ -111,11 +111,11 @@ mod tests {
         let mut policy = WeightedRoundRobin::new();
         policy.set_hosts(hosts);
         assert_eq!(
-            policy.next().map(|h| h.config.host.clone()),
+            policy.next().map(|h| h.address().to_owned()),
             Some("a".to_owned())
         );
         assert_eq!(
-            policy.next().map(|h| h.config.host.clone()),
+            policy.next().map(|h| h.address().to_owned()),
             Some("a".to_owned())
         );
     }

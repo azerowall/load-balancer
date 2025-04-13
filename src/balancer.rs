@@ -1,11 +1,11 @@
-use std::sync::{atomic, Arc};
+use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 use serde::Deserialize;
 
 use crate::{
     host::{HostConfig, HostState},
-    policies::factory::{PolicyFactory, PolicyType},
+    policy::factory::{PolicyFactory, PolicyType},
     policy::BalancerPolicy,
 };
 
@@ -62,7 +62,7 @@ impl Balancer {
     fn alive_hosts(&self) -> Vec<Arc<HostState>> {
         self.hosts
             .iter()
-            .filter(|&h| h.alive.load(atomic::Ordering::SeqCst))
+            .filter(|&h| h.is_alive())
             .cloned()
             .collect()
     }

@@ -6,6 +6,7 @@ pub struct Avg {
 }
 
 impl Avg {
+    #[cfg(test)]
     pub fn new(latency: usize) -> Self {
         Self {
             sum: AtomicUsize::new(latency),
