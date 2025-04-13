@@ -2,9 +2,12 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 
-use crate::{balancer::HostState, policies::RoundRobin, policy::BalancerPolicy};
+use crate::{host::HostState, policies::RoundRobin, policy::BalancerPolicy};
 
-use super::{LeastConnections, WeightedRoundRobin, WeightedRoundRobin2};
+use super::{
+    dynamic_weighted_round_robin::DynamicWeightedRoundRobin, LeastConnections, WeightedRoundRobin,
+    WeightedRoundRobin2,
+};
 
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -12,6 +15,7 @@ pub enum PolicyType {
     RoundRobin,
     WeightedRoundRobin,
     WeightedRoundRobin2,
+    DynamicWeightedRoundRobin,
     LeastConnections,
 }
 
@@ -35,6 +39,11 @@ impl PolicyFactory {
             }
             PolicyType::WeightedRoundRobin2 => {
                 let mut policy = WeightedRoundRobin2::new();
+                policy.set_hosts(hosts);
+                Box::new(policy)
+            }
+            PolicyType::DynamicWeightedRoundRobin => {
+                let mut policy = DynamicWeightedRoundRobin::new();
                 policy.set_hosts(hosts);
                 Box::new(policy)
             }

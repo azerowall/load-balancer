@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{balancer::HostState, policy::BalancerPolicy, utils};
+use crate::{host::HostState, policy::BalancerPolicy, utils};
 
 struct State {
     current_index: usize,
@@ -77,12 +77,12 @@ impl BalancerPolicy for WeightedRoundRobin2 {
 
 #[cfg(test)]
 mod tests {
-    use crate::balancer::HostConfig;
+    use crate::host::HostConfig;
 
     use super::*;
 
     #[test]
-    fn test_happy() {
+    fn test_happy_path() {
         let hosts = vec![
             Arc::new(HostState::new(HostConfig {
                 host: "a".to_owned(),

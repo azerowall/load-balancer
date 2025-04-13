@@ -1,12 +1,16 @@
 use std::sync::{
-    atomic::{self},
+    atomic::{self, AtomicIsize},
     Arc,
 };
 
-use crate::{balancer::HostState, policy::BalancerPolicy};
+use crate::{host::HostState, policy::BalancerPolicy};
 
+struct InnerHostState {
+    host: Arc<HostState>,
+    current_weight: AtomicIsize,
+}
 pub struct WeightedRoundRobin {
-    hosts: Vec<Arc<HostState>>,
+    hosts: Vec<InnerHostState>,
     total_weight: usize,
 }
 
@@ -19,33 +23,41 @@ impl WeightedRoundRobin {
     }
 
     pub fn set_hosts(&mut self, hosts: Vec<Arc<HostState>>) {
-        self.hosts = hosts;
+        self.hosts = hosts
+            .into_iter()
+            .map(|host| InnerHostState {
+                host,
+                current_weight: AtomicIsize::new(0),
+            })
+            .collect();
 
-        self.total_weight = self.hosts.iter().fold(0, |a, b| a + b.config.weight);
+        self.total_weight = self.hosts.iter().fold(0, |a, b| a + b.host.config.weight);
     }
 
     pub fn next(&self) -> Option<Arc<HostState>> {
-        let mut next: Option<&Arc<HostState>> = None;
+        let mut selected: Option<&InnerHostState> = None;
+        let mut max_current_weight: isize = -1;
 
-        let mut max_weight: isize = -1;
         for host in &self.hosts {
-            let weight = host.config.weight;
-            let mut current_weight = host
-                .current_weight
-                .fetch_add(weight as isize, atomic::Ordering::SeqCst);
-            current_weight += weight as isize;
+            let weight = host.host.config.weight;
 
-            if current_weight > max_weight {
-                max_weight = current_weight;
-                next = Some(host);
+            let current_weight = host
+                .current_weight
+                .fetch_add(weight as isize, atomic::Ordering::SeqCst)
+                + weight as isize;
+
+            if current_weight > max_current_weight {
+                max_current_weight = current_weight;
+                selected = Some(host);
             }
         }
-        let next = next?;
+        let selected = selected?;
 
-        next.current_weight
+        selected
+            .current_weight
             .fetch_sub(self.total_weight as isize, atomic::Ordering::SeqCst);
 
-        Some(next.clone())
+        Some(selected.host.clone())
     }
 }
 
@@ -57,12 +69,12 @@ impl BalancerPolicy for WeightedRoundRobin {
 
 #[cfg(test)]
 mod tests {
-    use crate::balancer::HostConfig;
+    use crate::host::HostConfig;
 
     use super::*;
 
     #[test]
-    fn test_happy() {
+    fn test_happy_path() {
         let hosts = vec![
             Arc::new(HostState::new(HostConfig {
                 host: "a".to_owned(),

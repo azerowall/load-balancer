@@ -1,6 +1,6 @@
 use std::sync::{atomic, Arc};
 
-use crate::{balancer::HostState, policy::BalancerPolicy};
+use crate::{host::HostState, policy::BalancerPolicy};
 
 pub struct LeastConnections {
     hosts: Vec<Arc<HostState>>,
@@ -32,7 +32,7 @@ impl BalancerPolicy for LeastConnections {
 
 #[cfg(test)]
 mod tests {
-    use crate::balancer::HostConfig;
+    use crate::host::HostConfig;
 
     use super::*;
 

@@ -1,3 +1,4 @@
+pub mod dynamic_weighted_round_robin;
 pub mod factory;
 pub mod least_connections;
 pub mod round_robin;

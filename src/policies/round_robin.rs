@@ -3,7 +3,7 @@ use std::sync::{
     Arc,
 };
 
-use crate::{balancer::HostState, policy::BalancerPolicy};
+use crate::{host::HostState, policy::BalancerPolicy};
 
 pub struct RoundRobin {
     hosts: Vec<Arc<HostState>>,
@@ -37,12 +37,12 @@ impl BalancerPolicy for RoundRobin {
 
 #[cfg(test)]
 mod tests {
-    use crate::balancer::HostConfig;
+    use crate::host::HostConfig;
 
     use super::*;
 
     #[test]
-    fn test_happy() {
+    fn test_happy_path() {
         let hosts = vec![
             Arc::new(HostState::new(HostConfig {
                 host: "a".to_owned(),

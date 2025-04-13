@@ -9,8 +9,9 @@ Load-balancer written for education.
 - Load-balancing algorithms
     - [x] Round Robin
     - [x] Weighted Round Robin
-    - [ ] Dynamic Weighted Round Robin
+    - [x] Dynamic Weighted Round Robin
     - [x] Least connections
+    - [ ] Least time
     - [ ] PEWMA
     - [ ] Power of 2
 - Healthcheck
@@ -51,6 +52,6 @@ docker compose up
 curl http://localhost:80/echo/helloworld
 ```
 
-Prometheus web UI available on http://localhost:9090.
+Prometheus web UI is available on http://localhost:9090.
 
-Grafana web UI with dashboard available on http://localhost:3000 (admin:admin).
+Grafana web UI with dashboard is available on http://localhost:3000 (admin:admin).

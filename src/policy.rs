@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::balancer::HostState;
+use crate::host::HostState;
 
 pub trait BalancerPolicy {
     fn next(&self) -> Option<Arc<HostState>>;

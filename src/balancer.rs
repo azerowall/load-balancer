@@ -1,42 +1,13 @@
-use std::sync::{
-    atomic::{self, AtomicBool, AtomicIsize, AtomicUsize},
-    Arc,
-};
+use std::sync::{atomic, Arc};
 
 use arc_swap::ArcSwap;
 use serde::Deserialize;
 
 use crate::{
+    host::{HostConfig, HostState},
     policies::factory::{PolicyFactory, PolicyType},
     policy::BalancerPolicy,
 };
-
-#[derive(Clone, Deserialize)]
-pub struct HostConfig {
-    pub host: String,
-    pub weight: usize,
-}
-
-pub struct HostState {
-    pub config: HostConfig,
-    pub alive: AtomicBool,
-    pub weight: AtomicUsize,
-    pub current_weight: AtomicIsize,
-    pub connections: AtomicUsize,
-}
-
-impl HostState {
-    pub fn new(config: HostConfig) -> Self {
-        let weight = config.weight;
-        Self {
-            config,
-            alive: AtomicBool::new(true),
-            weight: AtomicUsize::new(weight),
-            current_weight: AtomicIsize::new(0),
-            connections: AtomicUsize::new(0),
-        }
-    }
-}
 
 #[derive(Clone, Deserialize)]
 pub struct Config {

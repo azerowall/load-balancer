@@ -2,6 +2,7 @@ mod app_state;
 mod balancer;
 mod config;
 mod healthcheck;
+mod host;
 mod metrics;
 mod policies;
 mod policy;
