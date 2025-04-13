@@ -10,7 +10,7 @@ lazy_static! {
             .expect("Can't create metric");
     pub static ref UPSTREAM_ERRORS: IntCounterVec = register_int_counter_vec!(
         opts!("upstream_errors_count", "upstreams errors"),
-        &["host"]
+        &["host", "reason"]
     )
     .expect("Can't create metric");
     pub static ref UPSTREAM_TIMINGS: HistogramVec = register_histogram_vec!(

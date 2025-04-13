@@ -193,7 +193,10 @@ impl Server {
         let response = match response {
             Err(e) => {
                 warn!("upstream {address} error: {e}");
-                metrics::UPSTREAM_ERRORS.with_label_values(&[address]).inc();
+                let reason = client_error_reason(&e);
+                metrics::UPSTREAM_ERRORS
+                    .with_label_values(&[address, reason])
+                    .inc();
                 return Self::bad_gateway();
             }
             Ok(response) => response.map(ServerBody::Left),
@@ -409,4 +412,11 @@ fn write_forwarded_header_item(
         value.extend_from_slice(host_header.as_bytes());
     }
     value.extend_from_slice(b";proto=http");
+}
+
+fn client_error_reason(err: &hyper_util::client::legacy::Error) -> &'static str {
+    if err.is_connect() {
+        return "connect";
+    }
+    return "other";
 }
