@@ -13,7 +13,7 @@ set_header_forwarded = "append"
 client_ip_header = "X-Real-IP"
 
 [balancer]
-policy = "dynamic_weighted_round_robin"
+policy = "least_connections"
 
 [healthcheck]
 enabled = false
@@ -22,9 +22,12 @@ interval = 5000 # ms
 
 [[hosts]]
 host = "backend-1"
-weight = 2
+weight = 1
 
 [[hosts]]
 host = "backend-2"
 weight = 1
 
+[[hosts]]
+host = "backend-3"
+weight = 1
