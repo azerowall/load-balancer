@@ -32,7 +32,7 @@ groups:
         labels:
           severity: medium
         annotations:
-          summary: Requests are absent for upstream {{ $labels.host }}
+          summary: Requests metric are absent for upstream {{ $labels.host }}
 
       - alert: UpstreamTimingsIncrease
         expr: |
@@ -49,4 +49,4 @@ groups:
         labels:
           severity: high
         annotations:
-          summary: Requests are absent for upstream {{ $labels.host }}
+          summary: Timings increased more than x2 for upstream {{ $labels.host }}
