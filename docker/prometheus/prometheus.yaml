@@ -6,3 +6,6 @@ scrape_configs:
     metrics_path: "/metrics"
     static_configs:
       - targets: ["lb:80"]
+
+rule_files:
+  - 'rules.yaml'

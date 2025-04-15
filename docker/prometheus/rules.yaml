@@ -1,0 +1,52 @@
+groups:
+  - name: default
+    # How often evaluate rules
+    interval: 1m
+    # Timeshift to ensure we collected everything
+    query_offset: 1m
+    rules:
+      - alert: UpstreamNoRequestsTotal
+        expr: 'sum(rate(upstream_rps_count[1m])) == 0'
+        # How long expr should be true before firing rule
+        for: 1m
+        # How long rule should be fired after expr becomes false
+        keep_firing_for: 1m
+        labels:
+          severity: high
+        annotations:
+          summary: No requests at all
+
+      - alert: UpstreamNoRequests
+        expr: 'rate(upstream_rps_count[1m]) == 0'
+        for: 1m
+        keep_firing_for: 1m
+        labels:
+          severity: medium
+        annotations:
+          summary: No requests for upstream {{ $labels.host }}
+
+      - alert: UpstreamAbsentRequests
+        expr: 'absent(upstream_rps_count)'
+        for: 1m
+        keep_firing_for: 1m
+        labels:
+          severity: medium
+        annotations:
+          summary: Requests are absent for upstream {{ $labels.host }}
+
+      - alert: UpstreamTimingsIncrease
+        expr: |
+          (
+            histogram_quantile(0.95, rate(upstream_timings_seconds_bucket[2m])) > 0.0005
+          )
+          and
+          (
+            histogram_quantile(0.95, rate(upstream_timings_seconds_bucket[1h]))
+            > 2 * histogram_quantile(0.95, rate(upstream_timings_seconds_bucket[1h]))
+          )
+        for: 1m
+        keep_firing_for: 1m
+        labels:
+          severity: high
+        annotations:
+          summary: Requests are absent for upstream {{ $labels.host }}
