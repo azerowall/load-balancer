@@ -1,10 +1,8 @@
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::str::FromStr;
-use std::sync::atomic;
 use std::sync::Arc;
 use std::time::Duration;
-use std::time::Instant;
 
 use http::header::Entry;
 use http::HeaderName;
@@ -32,7 +30,7 @@ use tracing::info;
 use tracing::warn;
 
 use crate::app_state::AppState;
-use crate::host::HostState;
+use crate::host::HostTracker;
 use crate::metrics;
 use crate::utils;
 
@@ -182,6 +180,8 @@ impl Server {
                 return Self::bad_gateway();
             }
         };
+        let host = HostTracker::start_request(host);
+
         let address = host.address();
 
         info!(
@@ -191,9 +191,6 @@ impl Server {
         );
 
         self.prepare_request(&mut req, client_addr, address)?;
-
-        Self::on_request_start(&host);
-        let start_ts = Instant::now();
 
         let request_fut = self.0.client.request(req);
         let result = tokio::time::timeout(self.0.config.upstream_timeout, request_fut).await;
@@ -220,41 +217,12 @@ impl Server {
                 return Self::bad_gateway();
             }
         };
+        debug!("upstream {} response {}", address, response.status(),);
 
-        let elapsed = start_ts.elapsed();
-        debug!(
-            "upstream {} response {}, elapsed {} ms",
-            address,
-            response.status(),
-            elapsed.as_millis()
-        );
-
-        Self::on_headers_received(&host, elapsed);
+        host.response_headers_received();
 
         let response = response.map(|body| ServerBody::Left(TrackedIncoming::new(host, body)));
         Ok(response)
-    }
-
-    fn on_request_start(host: &Arc<HostState>) {
-        host.connections.fetch_add(1, atomic::Ordering::SeqCst);
-    }
-
-    fn on_headers_received(host: &Arc<HostState>, elapsed: Duration) {
-        // NOTE: now we measure latency as time between request and headers receiving.
-        // Later we can add ability to configure it.
-        host.latency_ms.account(elapsed.as_millis() as usize);
-
-        metrics::UPSTREAM_TIMINGS_SECONDS
-            .with_label_values(&[host.address()])
-            .observe(elapsed.as_secs_f64());
-        metrics::UPSTREAM_RPS_COUNT
-            .with_label_values(&[host.address()])
-            .inc();
-    }
-
-    fn on_body_received(host: &Arc<HostState>) {
-        debug!("host {} request finished", host.address());
-        host.connections.fetch_sub(1, atomic::Ordering::SeqCst);
     }
 
     fn prepare_request(
@@ -442,21 +410,21 @@ fn client_error_reason(err: &hyper_util::client::legacy::Error) -> &'static str 
 // TrackedIncoming
 
 // This is a wrapper over hyper::body::Incoming,
-// which tracks the end of the stream and calls
-// Server::on_body_received function.
-// It does it in Drop::drop method.
-// We could use Body::poll_frame and check when Incoming
+// which tracks the end of body stream.
+// It does it by storing HostTracker. So, when `Drop::drop()` is called
+// HostTracker guard is going to be dropped too.
+// NOTE: We could use `Body::poll_frame()` and check when Incoming
 // returns an `Poll::Read(None)`, but it's not guaranteed
-// that stream will be polled fully by server - instead it can
+// that stream will be polled fully by hyper - instead hyper can
 // rely on Body::is_end_stream and refuse doing polling.
 struct TrackedIncoming {
-    host: Arc<HostState>,
+    _host: HostTracker,
     body: Incoming,
 }
 
 impl TrackedIncoming {
-    pub fn new(host: Arc<HostState>, body: Incoming) -> Self {
-        Self { host, body }
+    pub fn new(host: HostTracker, body: Incoming) -> Self {
+        Self { _host: host, body }
     }
 }
 
@@ -480,12 +448,6 @@ impl Body for TrackedIncoming {
 
     fn size_hint(&self) -> hyper::body::SizeHint {
         self.body.size_hint()
-    }
-}
-
-impl Drop for TrackedIncoming {
-    fn drop(&mut self) {
-        Server::on_body_received(&self.host);
     }
 }
 
