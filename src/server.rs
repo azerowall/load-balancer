@@ -202,7 +202,7 @@ impl Server {
             Err(_) => {
                 warn!("upstream {address} timed out");
                 const TIMEOUT_REASON: &str = "timeout";
-                metrics::UPSTREAM_ERRORS
+                metrics::UPSTREAM_ERRORS_COUNT
                     .with_label_values(&[address, TIMEOUT_REASON])
                     .inc();
                 return Self::gateway_timeout();
@@ -214,7 +214,7 @@ impl Server {
             Err(e) => {
                 warn!("upstream {address} error: {e}");
                 let reason = client_error_reason(&e);
-                metrics::UPSTREAM_ERRORS
+                metrics::UPSTREAM_ERRORS_COUNT
                     .with_label_values(&[address, reason])
                     .inc();
                 return Self::bad_gateway();
@@ -244,10 +244,10 @@ impl Server {
         // Later we can add ability to configure it.
         host.latency_ms.account(elapsed.as_millis() as usize);
 
-        metrics::UPSTREAM_TIMINGS
+        metrics::UPSTREAM_TIMINGS_SECONDS
             .with_label_values(&[host.address()])
-            .observe(elapsed.as_millis() as f64);
-        metrics::UPSTREAM_RPS
+            .observe(elapsed.as_secs_f64());
+        metrics::UPSTREAM_RPS_COUNT
             .with_label_values(&[host.address()])
             .inc();
     }

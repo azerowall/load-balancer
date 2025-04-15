@@ -89,7 +89,7 @@
               }
             ]
           },
-          "unit": "ms"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -117,7 +117,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, rate(upstream_timings_bucket[$__rate_interval]))",
+          "expr": "histogram_quantile(0.50, rate(upstream_timings_seconds_bucket[$__rate_interval]))",
           "hide": false,
           "legendFormat": "{{host}} p50",
           "range": true,
@@ -129,7 +129,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, rate(upstream_timings_bucket[$__rate_interval]))",
+          "expr": "histogram_quantile(0.95, rate(upstream_timings_seconds_bucket[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{host}} p95",
@@ -142,7 +142,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, rate(upstream_timings_bucket[$__rate_interval]))",
+          "expr": "histogram_quantile(0.99, rate(upstream_timings_seconds_bucket[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{host}} p99",
@@ -362,6 +362,6 @@
   "timezone": "browser",
   "title": "Load balancer",
   "uid": "cegkvxcbeocn4b",
-  "version": 11,
+  "version": 13,
   "weekStart": ""
 }

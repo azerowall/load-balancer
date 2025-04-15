@@ -5,19 +5,19 @@ use prometheus::{
 };
 
 lazy_static! {
-    pub static ref UPSTREAM_RPS: IntCounterVec =
+    pub static ref UPSTREAM_RPS_COUNT: IntCounterVec =
         register_int_counter_vec!(opts!("upstream_rps_count", "upstream rps"), &["host"])
             .expect("Can't create metric");
-    pub static ref UPSTREAM_ERRORS: IntCounterVec = register_int_counter_vec!(
+    pub static ref UPSTREAM_ERRORS_COUNT: IntCounterVec = register_int_counter_vec!(
         opts!("upstream_errors_count", "upstreams errors"),
         &["host", "reason"]
     )
     .expect("Can't create metric");
-    pub static ref UPSTREAM_TIMINGS: HistogramVec = register_histogram_vec!(
-        "upstream_timings",
-        "upstream timings",
+    pub static ref UPSTREAM_TIMINGS_SECONDS: HistogramVec = register_histogram_vec!(
+        "upstream_timings_seconds",
+        "upstream timings_seconds",
         &["host"],
-        vec![0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0],
+        vec![0.0001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
     )
     .expect("Can't create metric");
 }
