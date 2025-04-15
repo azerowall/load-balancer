@@ -27,6 +27,7 @@ Load-balancer written for education.
     - [x] Config
     - [ ] Config reload
     - [x] Metrics (Prometheus + Grafana)
+    - [x] Alert rules
     - [ ] API
 
 ## How to build & run
@@ -49,7 +50,7 @@ cargo build
 cd docker/
 docker compose up
 # make requests
-curl http://localhost:80/echo/helloworld
+curl http://localhost:8080/echo/helloworld
 ```
 
 Prometheus web UI is available on http://localhost:9090.
