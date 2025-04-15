@@ -64,7 +64,18 @@
               "mode": "off"
             }
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -106,7 +117,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by (host, le) (rate(upstream_timings_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, rate(upstream_timings_bucket[$__rate_interval]))",
           "hide": false,
           "legendFormat": "{{host}} p50",
           "range": true,
@@ -118,7 +129,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (host, le) (rate(upstream_timings_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, rate(upstream_timings_bucket[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{host}} p95",
@@ -131,7 +142,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by (host, le) (rate(upstream_timings_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, rate(upstream_timings_bucket[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{host}} p99",
@@ -344,13 +355,13 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Load balancer",
   "uid": "cegkvxcbeocn4b",
-  "version": 8,
+  "version": 11,
   "weekStart": ""
 }
