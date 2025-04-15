@@ -25,7 +25,6 @@ use hyper_util::rt::TokioTimer;
 use serde::Deserialize;
 use tokio::net::TcpListener;
 use tracing::debug;
-use tracing::error;
 use tracing::info;
 use tracing::warn;
 
@@ -135,7 +134,7 @@ impl Server {
                     .header_read_timeout(Some(server.0.config.server_header_read_timeout));
                 let result = http.serve_connection(io, &service).await;
                 if let Err(err) = result {
-                    error!("error during handling client {client_addr}: {err:?}");
+                    warn!("error during handling client {client_addr}: {err:?}");
                 } else {
                     debug!("connection closed {client_addr}");
                 }
